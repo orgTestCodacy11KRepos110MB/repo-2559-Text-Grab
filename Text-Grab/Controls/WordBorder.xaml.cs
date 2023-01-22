@@ -1,6 +1,10 @@
-﻿using System;
+﻿using Microsoft.Recognizers.Text;
+using Microsoft.Recognizers.Text.Number;
+using Microsoft.Recognizers.Text.Sequence;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -93,6 +97,23 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Word)));
         }
     }
+
+    // https://github.com/microsoft/Recognizers-Text/blob/1d910cb0a19d42d7726380a5b276c1dd319e1907/.NET/Samples/SimpleConsole/Program.cs
+    private const string DefaultCulture = Culture.English;
+
+    public bool ContainsNumbers()
+    {
+        var result = NumberRecognizer.RecognizeNumber(Word, DefaultCulture);
+        return result.Count > 0;
+    }
+
+    public bool ContainsPhoneNumber()
+    {
+        var result = SequenceRecognizer.RecognizePhoneNumber(Word, DefaultCulture);
+        return result.Count > 0;
+    }
+
+
     public void Deselect()
     {
         IsSelected = false;
