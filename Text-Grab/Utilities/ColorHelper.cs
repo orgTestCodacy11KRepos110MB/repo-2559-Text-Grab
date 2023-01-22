@@ -13,4 +13,18 @@ public static class ColorHelper
     {
         return new SolidColorBrush(MediaColorFromDrawingColor(drawingColor));
     }
+
+    public static SolidColorBrush ContrastingWhiteOrBlack(this SolidColorBrush solidColorBrush)
+    {
+        byte r = solidColorBrush.Color.R;  // extract red
+        byte g = solidColorBrush.Color.G;  // extract green
+        byte b = solidColorBrush.Color.B;  // extract blue
+
+        double luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
+
+        if (luma > 180)
+            return new SolidColorBrush(Colors.Black);
+        
+        return new SolidColorBrush(Colors.White);
+    }
 }

@@ -1,23 +1,9 @@
 ﻿namespace Text_Grab;
 
-public enum DefaultLaunchSetting
-{
-    Fullscreen = 0,
-    GrabFrame = 1,
-    EditText = 2,
-    QuickLookup = 3
-}
-
 public enum AddRemove
 {
     Add = 0,
     Remove = 1,
-}
-
-public enum SpotInLine
-{
-    Beginning = 0,
-    End = 1,
 }
 
 public enum CurrentCase
@@ -28,6 +14,13 @@ public enum CurrentCase
     Unknown = 3
 }
 
+public enum DefaultLaunchSetting
+{
+    Fullscreen = 0,
+    GrabFrame = 1,
+    EditText = 2,
+    QuickLookup = 3
+}
 public enum Side
 {
     None = 0,
@@ -35,4 +28,16 @@ public enum Side
     Right = 2,
     Top = 3,
     Bottom = 4
+}
+
+public enum SpotInLine
+{
+    Beginning = 0,
+    End = 1,
+}
+public enum VirtualKeyCodes : short
+{
+    LeftButton = 0x01,
+    RightButton = 0x02,
+    MiddleButton = 0x04
 }

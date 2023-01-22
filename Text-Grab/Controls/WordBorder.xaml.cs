@@ -18,92 +18,17 @@ namespace Text_Grab.Controls;
 [DebuggerDisplay("{Word} : Size {Width}:{Height} Pos. {Left}:{Top} Table {ResultRowID}:{ResultColumnID}")]
 public partial class WordBorder : UserControl, INotifyPropertyChanged
 {
-    public bool IsSelected { get; set; } = false;
-
-    public bool WasRegionSelected { get; set; } = false;
-
-    public bool IsEditing => EditWordTextBox.IsFocused;
-
-    private SolidColorBrush matchingBackground = new SolidColorBrush(Colors.Black);
-    private SolidColorBrush contrastingForeground = new SolidColorBrush(Colors.White);
-    private int contextMenuBaseSize;
-    private DispatcherTimer debounceTimer = new();
-
-    public SolidColorBrush MatchingBackground
-    {
-        get { return matchingBackground; }
-        set
-        {
-            matchingBackground = value;
-            MainGrid.Background = matchingBackground;
-
-            byte r = matchingBackground.Color.R;  // extract red
-            byte g = matchingBackground.Color.G;  // extract green
-            byte b = matchingBackground.Color.B;  // extract blue
-
-            double luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
-
-            if (luma > 180)
-            {
-                contrastingForeground = new SolidColorBrush(Colors.Black);
-                EditWordTextBox.Foreground = contrastingForeground;
-            }
-        }
-    }
-
-    public string Word
-    {
-        get { return (string)GetValue(WordProperty); }
-        set
-        {
-            SetValue(WordProperty, value);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Word)));
-        }
-    }
-
     // Using a DependencyProperty as the backing store for Word.  This enables animation, styling, binding, etc...
     public static readonly DependencyProperty WordProperty =
         DependencyProperty.Register("Word", typeof(string), typeof(WordBorder), new PropertyMetadata(""));
 
-
-    public int LineNumber { get; set; } = 0;
-
-    public int ResultRowID { get; set; } = 0;
-
-    public int ResultColumnID { get; set; } = 0;
-
-    private double top = 0;
-    public double Top
-    {
-        get { return top; }
-        set
-        {
-            top = value;
-            Canvas.SetTop(this, top);
-        }
-    }
-
-    private double left = 0;
-    public double Left
-    {
-        get { return left; }
-        set
-        {
-            left = value;
-            Canvas.SetLeft(this, left);
-        }
-    }
-
-    public double Right => Left + Width;
-
-    public double Bottom => Top + Height;
-
     public static RoutedCommand MergeWordsCommand = new();
-
-    public bool IsFromEditWindow { get; set; } = false;
-
-    public GrabFrame? OwnerGrabFrame { get; set; }
-
+    private int contextMenuBaseSize;
+    private SolidColorBrush contrastingForeground = new SolidColorBrush(Colors.White);
+    private DispatcherTimer debounceTimer = new();
+    private double left = 0;
+    private SolidColorBrush matchingBackground = new SolidColorBrush(Colors.Black);
+    private double top = 0;
     public WordBorder()
     {
         InitializeComponent();
@@ -114,20 +39,60 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
         debounceTimer.Tick += DebounceTimer_Tick;
     }
 
-    private void DebounceTimer_Tick(object? sender, EventArgs e)
-    {
-        debounceTimer.Stop();
-        OwnerGrabFrame?.WordChanged();
-    }
-
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public void Select()
+    public double Bottom => Top + Height;
+    public bool IsEditing => EditWordTextBox.IsFocused;
+    public bool IsFromEditWindow { get; set; } = false;
+    public bool IsSelected { get; set; } = false;
+
+    public double Left
     {
-        IsSelected = true;
-        WordBorderBorder.BorderBrush = new SolidColorBrush(Colors.Orange);
+        get { return left; }
+        set
+        {
+            left = value;
+            Canvas.SetLeft(this, left);
+        }
     }
 
+    public int LineNumber { get; set; } = 0;
+    public SolidColorBrush MatchingBackground
+    {
+        get { return matchingBackground; }
+        set
+        {
+            matchingBackground = value;
+            MainGrid.Background = matchingBackground;
+            contrastingForeground = matchingBackground.ContrastingWhiteOrBlack();
+            EditWordTextBox.Foreground = contrastingForeground;
+        }
+    }
+
+    public GrabFrame? OwnerGrabFrame { get; set; }
+    public int ResultColumnID { get; set; } = 0;
+    public int ResultRowID { get; set; } = 0;
+    public double Right => Left + Width;
+    public double Top
+    {
+        get { return top; }
+        set
+        {
+            top = value;
+            Canvas.SetTop(this, top);
+        }
+    }
+
+    public bool WasRegionSelected { get; set; } = false;
+    public string Word
+    {
+        get { return (string)GetValue(WordProperty); }
+        set
+        {
+            SetValue(WordProperty, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Word)));
+        }
+    }
     public void Deselect()
     {
         IsSelected = false;
@@ -149,6 +114,25 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
         };
     }
 
+    public void FocusTextbox()
+    {
+        EditWordTextBox.Focus();
+        Keyboard.Focus(EditWordTextBox);
+        EditWordTextBox.SelectAll();
+    }
+
+    public bool IntersectsWith(Rect rectToChek)
+    {
+        Rect wbRect = new(Left, Top, Width, Height);
+        return rectToChek.IntersectsWith(wbRect);
+    }
+
+    public void Select()
+    {
+        IsSelected = true;
+        WordBorderBorder.BorderBrush = new SolidColorBrush(Colors.Orange);
+    }
+
     public void SetAsBarcode()
     {
         EditWordTextBox.TextWrapping = TextWrapping.Wrap;
@@ -162,17 +146,12 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
             EditWordTextBox.Background = new SolidColorBrush(Colors.Blue);
     }
 
-    public bool IntersectsWith(Rect rectToChek)
+    private void BreakIntoWordsMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        Rect wbRect = new(Left, Top, Width, Height);
-        return rectToChek.IntersectsWith(wbRect);
-    }
+        if (OwnerGrabFrame is null)
+            return;
 
-    public void FocusTextbox()
-    {
-        EditWordTextBox.Focus();
-        Keyboard.Focus(EditWordTextBox);
-        EditWordTextBox.SelectAll();
+        OwnerGrabFrame.BreakWordBorderIntoWords(this);
     }
 
     private void CanMergeWordBorderExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -183,22 +162,14 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
             e.CanExecute = false;
     }
 
-    private void MergeWordBordersExecuted(object sender, ExecutedRoutedEventArgs? e = null)
+    private void DebounceTimer_Tick(object? sender, EventArgs e)
     {
-        OwnerGrabFrame?.MergeSelectedWordBorders();
+        debounceTimer.Stop();
+        OwnerGrabFrame?.WordChanged();
     }
-
-    private void WordBorder_MouseEnter(object sender, RoutedEventArgs e)
+    private void DeleteWordMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (OwnerGrabFrame?.isCtrlDown is true)
-            MoveResizeBorder.Visibility = Visibility.Visible;
-        else
-            MoveResizeBorder.Visibility = Visibility.Collapsed;
-    }
-
-    private void WordBorder_MouseLeave(object sender, RoutedEventArgs e)
-    {
-        MoveResizeBorder.Visibility = Visibility.Collapsed;
+        OwnerGrabFrame?.DeleteThisWordBorder(this);
     }
 
     private void EditWordTextBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)
@@ -229,18 +200,92 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
         }
     }
 
-    private void WordBorderControl_MouseDown(object sender, MouseButtonEventArgs e)
+    private void EditWordTextBox_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (e.RightButton == MouseButtonState.Pressed)
-            return;
-
-        e.Handled = true;
-        if (IsSelected)
-            Deselect();
-        else
-            Select();
+        Select();
     }
 
+    private void EditWordTextBox_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        Select();
+        e.Handled = true;
+    }
+
+    private void EditWordTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        debounceTimer.Stop();
+        debounceTimer.Start();
+    }
+
+    private void MergeWordBordersExecuted(object sender, ExecutedRoutedEventArgs? e = null)
+    {
+        OwnerGrabFrame?.MergeSelectedWordBorders();
+    }
+
+    private void MergeWordBordersMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (OwnerGrabFrame is null)
+            return;
+
+        OwnerGrabFrame.MergeSelectedWordBorders();
+    }
+
+    private void MoveResizeBorder_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        Select();
+        OwnerGrabFrame?.StartWordBorderMoveResize(this, Side.None);
+    }
+
+    private void SearchForSimilarMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        OwnerGrabFrame?.SearchForSimilar(this);
+    }
+
+    private void SizeHandle_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe)
+            return;
+        Enum.TryParse(typeof(Side), fe.Tag.ToString(), out var side);
+
+        if (side is not Side sideEnum)
+            return;
+        OwnerGrabFrame?.StartWordBorderMoveResize(this, sideEnum);
+    }
+
+    private void TryToAlphaMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        string oldWord = Word;
+        if (EditWordTextBox.SelectedText != string.Empty)
+            EditWordTextBox.SelectedText = EditWordTextBox.SelectedText.TryFixToLetters();
+        else
+            Word = Word.TryFixToLetters();
+
+        OwnerGrabFrame?.UndoableWordChange(this, oldWord, true);
+    }
+
+    private void TryToNumberMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        string oldWord = Word;
+        if (EditWordTextBox.SelectedText != string.Empty)
+            EditWordTextBox.SelectedText = EditWordTextBox.SelectedText.TryFixToNumbers();
+        else
+            Word = Word.TryFixToNumbers();
+
+        OwnerGrabFrame?.UndoableWordChange(this, oldWord, true);
+    }
+
+    private void WordBorder_MouseEnter(object sender, RoutedEventArgs e)
+    {
+        if (OwnerGrabFrame?.isCtrlDown is true)
+            MoveResizeBorder.Visibility = Visibility.Visible;
+        else
+            MoveResizeBorder.Visibility = Visibility.Collapsed;
+    }
+
+    private void WordBorder_MouseLeave(object sender, RoutedEventArgs e)
+    {
+        MoveResizeBorder.Visibility = Visibility.Collapsed;
+    }
     private void WordBorderControl_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (EditWordTextBox.Visibility == Visibility.Collapsed)
@@ -259,92 +304,21 @@ public partial class WordBorder : UserControl, INotifyPropertyChanged
             WindowUtilities.AddTextToOpenWindow(Word);
     }
 
-    private void TryToNumberMenuItem_Click(object sender, RoutedEventArgs e)
+    private void WordBorderControl_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        string oldWord = Word;
-        if (EditWordTextBox.SelectedText != string.Empty)
-            EditWordTextBox.SelectedText = EditWordTextBox.SelectedText.TryFixToNumbers();
-        else
-            Word = Word.TryFixToNumbers();
-
-        OwnerGrabFrame?.UndoableWordChange(this, oldWord, true);
-    }
-
-    private void TryToAlphaMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        string oldWord = Word;
-        if (EditWordTextBox.SelectedText != string.Empty)
-            EditWordTextBox.SelectedText = EditWordTextBox.SelectedText.TryFixToLetters();
-        else
-            Word = Word.TryFixToLetters();
-
-        OwnerGrabFrame?.UndoableWordChange(this, oldWord, true);
-    }
-
-    private void BreakIntoWordsMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (OwnerGrabFrame is null)
+        if (e.RightButton == MouseButtonState.Pressed)
             return;
 
-        OwnerGrabFrame.BreakWordBorderIntoWords(this);
+        e.Handled = true;
+        if (IsSelected)
+            Deselect();
+        else
+            Select();
     }
-
-    private void MergeWordBordersMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (OwnerGrabFrame is null)
-            return;
-
-        OwnerGrabFrame.MergeSelectedWordBorders();
-    }
-
     private void WordBorderControl_Unloaded(object sender, RoutedEventArgs e)
     {
         this.MouseDoubleClick -= WordBorderControl_MouseDoubleClick;
         this.MouseDown -= WordBorderControl_MouseDown;
         this.Unloaded -= WordBorderControl_Unloaded;
-    }
-
-    private void MoveResizeBorder_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        Select();
-        OwnerGrabFrame?.StartWordBorderMoveResize(this, Side.None);
-    }
-
-    private void SizeHandle_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not FrameworkElement fe)
-            return;
-        Enum.TryParse(typeof(Side), fe.Tag.ToString(), out var side);
-
-        if (side is not Side sideEnum)
-            return;
-        OwnerGrabFrame?.StartWordBorderMoveResize(this, sideEnum);
-    }
-
-    private void DeleteWordMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        OwnerGrabFrame?.DeleteThisWordBorder(this);
-    }
-
-    private void SearchForSimilarMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        OwnerGrabFrame?.SearchForSimilar(this);
-    }
-
-    private void EditWordTextBox_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        Select();
-        e.Handled = true;
-    }
-
-    private void EditWordTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        debounceTimer.Stop();
-        debounceTimer.Start();
-    }
-
-    private void EditWordTextBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        Select();
     }
 }
